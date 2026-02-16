@@ -31,15 +31,11 @@ def translate_audio(audio_path: str):
     if file_results["successful"]:
         job.download_outputs(output_dir=SARVAM_OUTPUT_DIR)
 
-        # Read the downloaded transcription file
-        output_files = os.listdir(SARVAM_OUTPUT_DIR)
-        if output_files:
-            # Assuming the transcription is in a txt or json file
-            transcription_file = os.path.join(SARVAM_OUTPUT_DIR, output_files[0])
-            with open(transcription_file, "r") as f:
-                transcription = f.read()
-            return transcription
-        else:
-            raise Exception("No output files found in directory")
+        # SDK's download_outputs saves as {input_file_name}.json
+        input_file_name = file_results["successful"][0]["file_name"]
+        transcription_file = os.path.join(SARVAM_OUTPUT_DIR, f"{input_file_name}.json")
+        with open(transcription_file, "r") as f:
+            transcription = f.read()
+        return transcription
     else:
         raise Exception("Failed to transcribe audio")
