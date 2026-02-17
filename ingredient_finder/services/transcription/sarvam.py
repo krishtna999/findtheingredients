@@ -29,6 +29,8 @@ def translate_audio(audio_path: str):
 
     # Download outputs for successful files
     if file_results["successful"]:
+        # Man Sarvam's Batch API is the only thing that supports upto 1 hr data but there is no way to access the transcription via text directly lol ...
+        # You gotta store the file and read it again :/
         job.download_outputs(output_dir=SARVAM_OUTPUT_DIR)
 
         # SDK's download_outputs saves as {input_file_name}.json

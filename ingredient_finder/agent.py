@@ -36,6 +36,11 @@ agent_builder.add_edge(NodeNames.FORMAT_INGREDIENTS, END)
 agent = agent_builder.compile()
 
 
+# ADR: Should be the first NODE in the graph. That way we can add a validation check as well.
+# This NODE will preprocess and validate if the video has a valid recipe or not (based on metadata, etc).
+# It makes no functional difference to do this outside the graph vs doing inside the graph.
+# But I guess the throwing it in the graph will also provide visibility via automated Langsmith analytics.
+# So I guess club all-things agent related under Langgraph to utilize the surrounding ecosystem.
 def preprocess_and_invoke_agent(video_url: str):
     metadata = fetch_metadata(video_url)
     return agent.invoke({"video_metadata": metadata, "video_url": video_url})
