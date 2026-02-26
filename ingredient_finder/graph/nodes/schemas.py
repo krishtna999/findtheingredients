@@ -5,9 +5,6 @@ class SingleRecipeDetail(BaseModel):
     """Single recipe with ingredients and key callouts."""
 
     ingredients: dict[str, str]
-    custom_instructions: list[str] = Field(
-        description="Non-obvious important tips explicitly mentioned: substitutions, conversions, technique warnings. Never infer."
-    )
 
 
 class RecipeDetailsSchema(BaseModel):

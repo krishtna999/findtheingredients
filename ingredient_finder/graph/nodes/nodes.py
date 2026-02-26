@@ -1,40 +1,20 @@
 from enum import StrEnum
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 
 from ingredient_finder.services.youtube import download_audio
 from ingredient_finder.graph.chat_models import model, model_with_tools
 from ingredient_finder.graph.tools import transcription_tools_by_name
 
-from ingredient_finder.graph.nodes.schemas import RecipeDetailsSchema
+from ingredient_finder.graph.nodes.schemas.recipe import ExtractedRecipes
 
 
 class NodeNames(StrEnum):
-    FETCH_RECIPE_FROM_DESCRIPTION = "fetch_recipe_from_description"
-    FETCH_RECIPE_FROM_AUDIO = "fetch_recipe_from_audio"
-    FORMAT_INGREDIENTS = "format_ingredients"
+    TRANSCRIBE_RECIPE_AUDIO = "transcribe_recipe_audio"
+    FORMAT_REQUIRED_INGREDIENTS = "format_required_ingredients"
+    EXTRACT_RECIPE_FROM_TRANSCRIPT = "extract_recipe_from_transcript"
 
 
-def fetch_recipe_from_description(state):
-    description = state["video_metadata"]["description"]
-
-    result = model.invoke(
-        [
-            HumanMessage(
-                content=(
-                    "Trim the video description to only include the ingredients, instructions and callouts."
-                    "Remove any extra information.\n\n"
-                    f"{description}"
-                )
-            ),
-        ]
-    )
-
-    return {
-        "recipe_details": {**state["recipe_details"], "recipe_raw_text": result.content}
-    }
-
-
-def fetch_recipe_from_audio(state):
+def transcribe_recipe_audio(state):
     audio_path = download_audio(state["video_url"], state["video_metadata"]["title"])
     tags = state["video_metadata"]["tags"]
     language = state["video_metadata"]["language"]
@@ -64,42 +44,51 @@ def fetch_recipe_from_audio(state):
     tool = transcription_tools_by_name[tool_call["name"]]
     transcribed_text = tool.invoke(tool_call["args"])
 
-    trimmed_recipe = model.invoke(
-        [
-            HumanMessage(
-                content=(
-                    "Trim the transcribed text to only include the cooking instructions, ingredients and important tips/callouts.."
-                    "Remove any extra information.\n\n"
-                    f"Recipe: {transcribed_text}"
-                )
-            ),
-        ]
-    )
-
-    return {"recipe_details": {"recipe_raw_text": trimmed_recipe.content}}
+    return {"recipe_details": {"recipe_raw_text": transcribed_text}}
 
 
-# ADR: This can maybe be done in the same prompt/LLM call in the previous fetch_recipe_* nodes which will lead to 1 less LLM call overall.
-# But imo, it's better to keep a separate node for this (unless it breaks the cost all-together).
-# Since it follows DRY it is easily re-used, unit-tested, etc etc. Also leads to better analytics, tracking and debugging via Langgraph/smith.
-# Not to mention the fact that you can have a less expensive model for this task (which is just formatting text to JSON).
-#
-# I guess finding the right level of SRP is key to balancing maintenance/engineering effort and AI costs.
-# If you focus on SRP too much, you end up with extra LLM calls.
-# If you don't focus on it enough, you end with a monolithic, hard to track/debug/maintain codebase.
-# But I'd still lean towards more SRP (esp. with more funding xD).
+def format_required_ingredients(state):
+    # No-op for now. implement to extract ingredients from the extracted recipes.
+    return state
 
 
-def format_ingredients(state):
+def extract_recipe_from_transcript(state):
     recipe_raw_text = state["recipe_details"]["recipe_raw_text"]
-    result = model.with_structured_output(RecipeDetailsSchema).invoke(
+    video_metadata = state["video_metadata"]
+
+    result = model.with_structured_output(ExtractedRecipes).invoke(
         [
+            SystemMessage(
+                content="""You are a recipe extraction engine. Convert raw recipe text into structured data. Rules:
+
+                1. Extraction only. If the author didn't say it, the field is null or empty. Never infer or enrich with general cooking knowledge.
+
+                2. Preserve the author's voice. Vague quantities ("a good handful"), casual timing ("cook till the raw smell goes"), sensory descriptions, etc - capture as is. 
+                   High-confidence translation is fine but do not normalize, convert, or rephrase.
+
+                3. One step = one logical cooking phase as the author presents it. Follow their pacing. Don't split, merge, or reorder steps.
+
+                4. The input may be messy (especially audio transcripts): filler words, repetition, mid-sentence corrections, tangents, sponsor segments. Extract the recipe signal, ignore the noise.
+                """
+            ),
             HumanMessage(
-                content=(
-                    "Extract the ingredients and important tips from the following recipe raw text."
-                    "Return each ingredient with its quantity.\n\n"
-                    f"{recipe_raw_text}"
-                )
+                content=f"""Extract the recipe from the following raw text.
+                <raw_text>
+                {recipe_raw_text}
+                </raw_text>
+
+                <video_description>
+                Watch out for any additional information in the video description provided below:
+                {video_metadata.get("description")}
+                </video_description>
+
+                <other_metadata>
+                title: {video_metadata.get("title")}
+                </other_metadata>
+                <tags>
+                tags: {video_metadata.get("tags")}
+                </tags>
+                """
             ),
         ]
     )
@@ -107,6 +96,6 @@ def format_ingredients(state):
     return {
         "recipe_details": {
             **state["recipe_details"],
-            "formatted_recipe_details": result.recipes,
+            "recipe_details": result,
         }
     }

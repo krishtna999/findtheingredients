@@ -19,7 +19,8 @@ def pydantic_serializer(obj):
 
 if __name__ == "__main__":
     # Starting with pongal can never go wrong !
-    input = "https://www.youtube.com/watch?v=WR5JJP5MyN4"
+    # input = "https://www.youtube.com/watch?v=WR5JJP5MyN4"
+    input = "https://www.youtube.com/watch?v=3Hn6iwieyX4"
     agent_result = preprocess_and_invoke_agent(input)
 
     with open(f"{OUTPUT_DIR}/{agent_result['video_metadata']['title']}.json", "w") as f:

@@ -2,7 +2,7 @@ from typing_extensions import TypedDict, Annotated
 from langchain.messages import AnyMessage
 import operator
 
-from ingredient_finder.graph.nodes.schemas import RecipeDetailsSchema
+from ingredient_finder.graph.nodes.schemas.recipe import ExtractedRecipe
 
 
 class VideoMetadata(TypedDict):
@@ -14,12 +14,13 @@ class VideoMetadata(TypedDict):
 
 class RecipeDetails(TypedDict):
     recipe_raw_text: str
-    formatted_recipe_details: RecipeDetailsSchema
+    extracted_recipe: ExtractedRecipe
+    required_ingredients: list[str]
 
 
-class IngredientFinderState(TypedDict):
+class RecipeExtractorState(TypedDict):
     video_metadata: VideoMetadata
+    recipe_details: RecipeDetails
     video_url: str
     messages: Annotated[list[AnyMessage], operator.add]
     llm_calls: int
-    recipe_details: RecipeDetails
