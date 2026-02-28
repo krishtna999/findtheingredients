@@ -21,6 +21,11 @@ def download_audio(video_url: str, video_title: str):
 
     os.makedirs(AUDIO_DIR, exist_ok=True)
     output_path = f"{AUDIO_DIR}/{video_title}"
+    audio_file = f"{output_path}.mp3"
+
+    if os.path.exists(audio_file):
+        print(f"[youtube] Using cached audio for '{video_title}'")
+        return audio_file
 
     ydl_opts = {
         "format": "bestaudio/best",
