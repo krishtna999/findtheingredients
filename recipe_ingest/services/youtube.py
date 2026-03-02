@@ -1,7 +1,8 @@
 import yt_dlp
 import os
+from shared.constants import ARTIFACTS_DIR
 
-AUDIO_DIR = "saved_audios"
+AUDIO_DIR = f"{ARTIFACTS_DIR}/saved_audios"
 
 
 def fetch_metadata(video_url: str):

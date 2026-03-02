@@ -6,8 +6,9 @@ import json
 import os
 from pydantic import BaseModel
 from recipe_ingest.agent import preprocess_and_invoke_agent
+from shared.constants import ARTIFACTS_DIR
 
-OUTPUT_DIR = "outputs"
+OUTPUT_DIR = f"{ARTIFACTS_DIR}/outputs"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 
